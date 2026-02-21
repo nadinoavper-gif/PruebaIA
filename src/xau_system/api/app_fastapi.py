@@ -10,8 +10,10 @@ from xau_system.data.realtime import MarketBar, RealTimeBuffer
 from xau_system.ensemble.consensus import TimeframeVote
 from xau_system.features.fundamental import FundamentalSnapshot
 from xau_system.integrations.mt5_bridge import MT5Bridge, MT5OrderRequest
+from xau_system.integrations.tradingview_feed import TradingViewFeed, build_analysis_from_payload
+from xau_system.rl.online_trainer import OnlineTrainer
 
-app = FastAPI(title="XAU/USD AI Signal Service", version="0.3.0")
+app = FastAPI(title="XAU/USD AI Signal Service", version="0.4.0")
 engine = SignalEngine()
 realtime_buffer = RealTimeBuffer()
 mt5_bridge = MT5Bridge()
@@ -22,6 +24,8 @@ price_provider = CompositePriceProvider(
         FixedPriceProvider(2300.0, source="fixed-fallback"),
     ]
 )
+tv_feed = TradingViewFeed()
+online_trainer = OnlineTrainer()
 
 
 class VoteInput(BaseModel):
@@ -67,6 +71,20 @@ class MT5OrderInput(BaseModel):
     symbol: str = "XAUUSD"
     deviation: int = 20
     comment: str = "xau_system"
+
+
+class TradingViewPayload(BaseModel):
+    timestamp: str | None = None
+    symbol: str = "XAUUSD"
+    timeframe: str = "1H"
+    source: str = "tradingview"
+    note: str = "alerta tradingview"
+    pattern: str | None = None
+    rsi: float | None = None
+    macd: float | None = None
+    chaikin_ad: float | None = None
+    fundamental_bias: float | None = None
+    chart_image_url: str | None = None
 
 
 @app.get("/health")
@@ -140,6 +158,41 @@ def mt5_order(payload: MT5OrderInput) -> dict:
     )
     ok, msg, request = mt5_bridge.send_market_order(req)
     return {"ok": ok, "message": msg, "request": request}
+
+
+@app.post("/training/start")
+def training_start() -> dict:
+    started = online_trainer.start()
+    return {"started": started, "running": online_trainer.status().running}
+
+
+@app.post("/training/stop")
+def training_stop() -> dict:
+    stopped = online_trainer.stop()
+    return {"stopped": stopped, "running": online_trainer.status().running}
+
+
+@app.get("/training/status")
+def training_status() -> dict:
+    st = online_trainer.status()
+    return {
+        "running": st.running,
+        "steps": st.steps,
+        "last_loss": st.last_loss,
+        "last_update_ts": st.last_update_ts,
+    }
+
+
+@app.post("/tradingview/analysis")
+def tradingview_analysis(payload: TradingViewPayload) -> dict:
+    analysis = build_analysis_from_payload(payload.model_dump())
+    tv_feed.append(analysis)
+    return {"ok": True, "symbol": analysis.symbol, "timeframe": analysis.timeframe}
+
+
+@app.get("/tradingview/analysis/latest")
+def tradingview_latest(n: int = 20) -> list[dict]:
+    return tv_feed.latest(n)
 
 
 @app.post("/signal/xauusd")

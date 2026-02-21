@@ -14,6 +14,8 @@ Implementación base en Python de la arquitectura híbrida propuesta para señal
 - Detección automática de precio de XAUUSD con proveedores en cascada (MT5 -> buffer realtime -> fallback).
 - Integración opcional con MetaTrader 5 para obtención de tick y envío de órdenes de mercado.
 - Objetivo de beneficio: 2% por defecto, 3% máximo en señales de alta confianza.
+- Entrenamiento online instantáneo en ejecución (`/training/start`, `/training/status`, `/training/stop`).
+- Recepción de análisis del usuario desde TradingView por webhook (`/tradingview/analysis`).
 
 ## Estructura
 
@@ -48,6 +50,9 @@ uvicorn xau_system.api.app_fastapi:app --reload
 - `POST /ingest/bar`: guarda barras en tiempo real para entrenamiento incremental.
 - `GET /realtime/latest?n=5`: retorna últimas barras en buffer.
 - `POST /signal/xauusd`: acepta `fundamentals` y `chaikin_ok` para fusión técnico-fundamental.
+- `POST /training/start`, `GET /training/status`, `POST /training/stop`: entrenamiento online instantáneo.
+- `POST /tradingview/analysis`: ingesta del análisis chartista/fundamental del usuario en TradingView.
+- `GET /tradingview/analysis/latest?n=20`: consulta de análisis recientes recibidos.
 
 
 ## Integración MetaTrader 5 (opcional)
