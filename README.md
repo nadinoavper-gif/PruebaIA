@@ -64,3 +64,15 @@ Si `MetaTrader5` está instalado y la terminal está abierta/logueada, puedes:
 - `POST /mt5/order` para enviar orden de mercado
 
 Si MT5 no está disponible, la API responde de forma segura sin romper el servicio.
+
+
+## Interfaz gráfica
+
+Se añadió una interfaz web para uso sencillo del usuario:
+
+- `GET /` o `GET /ui` abre el panel visual.
+- Desde la UI puedes:
+  - Consultar precio automático de XAUUSD.
+  - Iniciar/parar/monitorizar entrenamiento online.
+  - Enviar análisis de TradingView.
+  - Generar señal sin construir requests manuales.

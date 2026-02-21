@@ -12,6 +12,7 @@ from xau_system.features.fundamental import FundamentalSnapshot
 from xau_system.integrations.mt5_bridge import MT5Bridge, MT5OrderRequest
 from xau_system.integrations.tradingview_feed import TradingViewFeed, build_analysis_from_payload
 from xau_system.rl.online_trainer import OnlineTrainer
+from xau_system.ui.dashboard import dashboard_response
 
 app = FastAPI(title="XAU/USD AI Signal Service", version="0.4.0")
 engine = SignalEngine()
@@ -85,6 +86,18 @@ class TradingViewPayload(BaseModel):
     chaikin_ad: float | None = None
     fundamental_bias: float | None = None
     chart_image_url: str | None = None
+
+
+
+
+@app.get("/")
+def ui_root():
+    return dashboard_response()
+
+
+@app.get("/ui")
+def ui_dashboard():
+    return dashboard_response()
 
 
 @app.get("/health")
