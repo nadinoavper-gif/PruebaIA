@@ -52,4 +52,4 @@ def test_signal_engine_uses_bias_and_confirmation():
     )
     assert out.signal in {"BUY", "SELL", "NEUTRAL"}
     assert 0.0 <= out.confidence <= 1.0
-    assert out.risk_fraction <= 0.03
+    assert out.risk_fraction == 0.01

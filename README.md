@@ -6,13 +6,14 @@ Implementación base en Python de la arquitectura híbrida propuesta para señal
 - Features técnicas (RSI, MACD, Chaikin AD, ATR, z-score).
 - Módulos de modelos (CNN, temporal GRU+attention, híbrido).
 - Ensemble de consenso multitemporal.
-- Gestión de riesgo (1-2%, máximo 3%).
+- Gestión de riesgo fija al 1% por operación.
 - Reward y gating para autoaprendizaje online.
 - API FastAPI para inferencia de señal.
 - Ingesta en tiempo real (`/ingest/bar`) con buffer persistente para entrenamiento continuo.
 - Fusión de sesgo fundamental (USD, real yields, tasa FED, aversión al riesgo) y confirmación de volumen.
 - Detección automática de precio de XAUUSD con proveedores en cascada (MT5 -> buffer realtime -> fallback).
 - Integración opcional con MetaTrader 5 para obtención de tick y envío de órdenes de mercado.
+- Objetivo de beneficio: 2% por defecto, 3% máximo en señales de alta confianza.
 
 ## Estructura
 

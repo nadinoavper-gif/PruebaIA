@@ -3,7 +3,7 @@ from __future__ import annotations
 from xau_system.config import Settings
 from xau_system.ensemble.consensus import TimeframeVote, apply_multitimeframe_gate, weighted_vote
 from xau_system.features.fundamental import FundamentalSnapshot, compute_fundamental_bias
-from xau_system.risk.position_sizing import compute_sl_tp, risk_fraction
+from xau_system.risk.position_sizing import compute_sl_tp, profit_target_pct, risk_fraction
 from xau_system.utils.types import SignalOutput
 
 
@@ -69,7 +69,8 @@ class SignalEngine:
 
         confidence = max(agg)
         risk = risk_fraction(confidence, regime, pattern_quality)
-        sl, tp = compute_sl_tp(price, atr, signal)
+        tp_pct = profit_target_pct(confidence)
+        sl, tp = compute_sl_tp(price, atr, signal, tp_pct=tp_pct)
 
         pad = 0.15 * max(atr, 1e-6)
         return SignalOutput(
@@ -78,6 +79,6 @@ class SignalEngine:
             confidence=float(confidence),
             entry_zone=(price - pad, price + pad),
             stop_zone=(sl - pad, sl + pad),
-            targets=(tp, tp + (0.8 * atr if signal == "BUY" else -0.8 * atr)),
+            targets=(tp, tp),
             risk_fraction=risk,
         )
