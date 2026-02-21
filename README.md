@@ -76,3 +76,19 @@ Se añadió una interfaz web para uso sencillo del usuario:
   - Iniciar/parar/monitorizar entrenamiento online.
   - Enviar análisis de TradingView.
   - Generar señal sin construir requests manuales.
+
+
+## Módulo de implementación y pruebas
+
+Se añadió `src/xau_system/implementation.py` para guiar el uso y validar el sistema rápidamente.
+
+- `ImplementationModule.default_signal_payload()`: payload base para señal XAUUSD.
+- `ImplementationModule.smoke_test_core()`: prueba rápida del núcleo sin levantar API.
+- `ImplementationModule.smoke_test_api(base_url)`: prueba del endpoint `/signal/xauusd`.
+
+Script de ejecución:
+
+```bash
+python scripts/run_implementation_checks.py --skip-api
+python scripts/run_implementation_checks.py --api http://127.0.0.1:8000
+```
