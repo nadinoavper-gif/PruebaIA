@@ -1,17 +1,27 @@
 from __future__ import annotations
 
 from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from xau_system.api.service import SignalEngine
+from xau_system.data.live_price import BufferPriceProvider, CompositePriceProvider, FixedPriceProvider, MT5PriceProvider
 from xau_system.data.realtime import MarketBar, RealTimeBuffer
 from xau_system.ensemble.consensus import TimeframeVote
 from xau_system.features.fundamental import FundamentalSnapshot
+from xau_system.integrations.mt5_bridge import MT5Bridge, MT5OrderRequest
 
-app = FastAPI(title="XAU/USD AI Signal Service", version="0.2.0")
+app = FastAPI(title="XAU/USD AI Signal Service", version="0.3.0")
 engine = SignalEngine()
 realtime_buffer = RealTimeBuffer()
+mt5_bridge = MT5Bridge()
+price_provider = CompositePriceProvider(
+    providers=[
+        MT5PriceProvider(mt5_bridge),
+        BufferPriceProvider(realtime_buffer),
+        FixedPriceProvider(2300.0, source="fixed-fallback"),
+    ]
+)
 
 
 class VoteInput(BaseModel):
@@ -29,7 +39,7 @@ class FundamentalInput(BaseModel):
 
 
 class SignalRequest(BaseModel):
-    price: float
+    price: float | None = None
     atr: float = Field(gt=0)
     pattern_quality: float = Field(ge=0.0, le=1.0)
     regime: str = "range"
@@ -49,9 +59,34 @@ class MarketBarInput(BaseModel):
     source: str = "api"
 
 
+class MT5OrderInput(BaseModel):
+    side: str = Field(pattern="^(BUY|SELL)$")
+    lot: float = Field(gt=0)
+    stop_loss: float = Field(gt=0)
+    take_profit: float = Field(gt=0)
+    symbol: str = "XAUUSD"
+    deviation: int = 20
+    comment: str = "xau_system"
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "instrument": "XAUUSD"}
+
+
+@app.get("/market/xauusd/price")
+def get_market_price() -> dict:
+    tick = price_provider.get_tick("XAUUSD")
+    if tick is None:
+        raise HTTPException(status_code=503, detail="No hay precio disponible")
+    return {
+        "symbol": tick.symbol,
+        "bid": tick.bid,
+        "ask": tick.ask,
+        "last": tick.last,
+        "timestamp": tick.timestamp.isoformat(),
+        "source": tick.source,
+    }
 
 
 @app.post("/ingest/bar")
@@ -86,6 +121,27 @@ def latest_bars(n: int = 5) -> list[dict]:
     ]
 
 
+@app.post("/mt5/initialize")
+def mt5_initialize() -> dict:
+    ok, msg = mt5_bridge.initialize()
+    return {"ok": ok, "message": msg}
+
+
+@app.post("/mt5/order")
+def mt5_order(payload: MT5OrderInput) -> dict:
+    req = MT5OrderRequest(
+        symbol=payload.symbol,
+        side=payload.side,
+        lot=payload.lot,
+        stop_loss=payload.stop_loss,
+        take_profit=payload.take_profit,
+        deviation=payload.deviation,
+        comment=payload.comment,
+    )
+    ok, msg, request = mt5_bridge.send_market_order(req)
+    return {"ok": ok, "message": msg, "request": request}
+
+
 @app.post("/signal/xauusd")
 def get_signal(payload: SignalRequest) -> dict:
     votes = [TimeframeVote(v.timeframe, list(v.probs), v.confidence, v.weight) for v in payload.votes]
@@ -94,8 +150,14 @@ def get_signal(payload: SignalRequest) -> dict:
         if payload.fundamentals is not None
         else FundamentalSnapshot()
     )
+
+    live_tick = price_provider.get_tick("XAUUSD")
+    market_price = payload.price if payload.price is not None else (live_tick.last if live_tick else None)
+    if market_price is None:
+        raise HTTPException(status_code=503, detail="No se pudo determinar precio automático de XAUUSD")
+
     out = engine.infer_from_probabilities(
-        price=payload.price,
+        price=market_price,
         atr=payload.atr,
         votes=votes,
         d1_probs=list(payload.d1_probs),
@@ -104,4 +166,6 @@ def get_signal(payload: SignalRequest) -> dict:
         fundamentals=fundamentals,
         chaikin_ok=payload.chaikin_ok,
     )
-    return out.__dict__
+    result = out.__dict__
+    result["price_source"] = live_tick.source if payload.price is None and live_tick else "manual"
+    return result

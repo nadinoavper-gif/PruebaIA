@@ -18,6 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 ml = ["tensorflow>=2.14"]
+mt5 = ["MetaTrader5>=5.0.45"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

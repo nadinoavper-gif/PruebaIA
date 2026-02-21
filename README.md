@@ -11,6 +11,8 @@ Implementación base en Python de la arquitectura híbrida propuesta para señal
 - API FastAPI para inferencia de señal.
 - Ingesta en tiempo real (`/ingest/bar`) con buffer persistente para entrenamiento continuo.
 - Fusión de sesgo fundamental (USD, real yields, tasa FED, aversión al riesgo) y confirmación de volumen.
+- Detección automática de precio de XAUUSD con proveedores en cascada (MT5 -> buffer realtime -> fallback).
+- Integración opcional con MetaTrader 5 para obtención de tick y envío de órdenes de mercado.
 
 ## Estructura
 
@@ -45,3 +47,14 @@ uvicorn xau_system.api.app_fastapi:app --reload
 - `POST /ingest/bar`: guarda barras en tiempo real para entrenamiento incremental.
 - `GET /realtime/latest?n=5`: retorna últimas barras en buffer.
 - `POST /signal/xauusd`: acepta `fundamentals` y `chaikin_ok` para fusión técnico-fundamental.
+
+
+## Integración MetaTrader 5 (opcional)
+
+Si `MetaTrader5` está instalado y la terminal está abierta/logueada, puedes:
+
+- `POST /mt5/initialize` para inicializar conexión
+- `GET /market/xauusd/price` para precio automático del oro
+- `POST /mt5/order` para enviar orden de mercado
+
+Si MT5 no está disponible, la API responde de forma segura sin romper el servicio.
